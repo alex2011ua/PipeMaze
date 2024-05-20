@@ -24,12 +24,12 @@ DIRECTION = {
 
 class Maze:
 
-    def __init__(self, maze):
-        self.maze = maze
-        self.start_position = None
-        self.start_directions = []
-        self.track_maze = None
-        self.visited = None  # big loop
+    def __init__(self, maze: list[str]):
+        self.maze: list[str] = maze
+        self.start_position: tuple = ()
+        self.start_directions: list[tuple[tuple, tuple, int]] = []  # (coordinates, exit direction, distances)
+        self.track_maze: list[str] = []
+        self.visited: list = []
 
     def print_maze(self, maze=None) -> None:
         """
@@ -74,8 +74,8 @@ class Maze:
         """
         self.track_maze = [["." for _ in range(len(self.maze[0]))] for _ in range(len(self.maze))]
 
-        first_start_direction = self.start_directions[0][1]
-        second_start_direction = self.start_directions[1][1]
+        first_start_direction: tuple[int] = self.start_directions[0][1]
+        second_start_direction: tuple[int] = self.start_directions[1][1]
         for direction in DIRECTION:
             if first_start_direction in DIRECTION[direction]:
                 if second_start_direction == DIRECTION[direction][first_start_direction]:
@@ -90,9 +90,6 @@ class Maze:
         self.visited = [self.start_position, self.start_directions[0][0], self.start_directions[1][0]]
         while True:
             (i, j), (exit_i, exit_j), distance = queue.pop(0)
-            # print_grid(track_maze)
-            # print(distance)
-
             # To determine where the pipe goes, you need to know what its shape is and where it has an inlet.
             shape: str = self.maze[i][j]
             # The exit direction of the previous pipe is the opposite direction to the inlet
@@ -115,7 +112,7 @@ class Maze:
         If the number is odd, then the cell is inside the big loop.
         :return: number of the area within the loop.
         """
-        count_tiles = 0
+        count_tiles: int = 0
         for i, row in enumerate(self.track_maze):
             for j in range(len(row)):
                 if (i, j) not in self.visited:

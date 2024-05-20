@@ -38,7 +38,7 @@ def print_grid(maze: list) -> None:
         print()
 
 
-def find_start_position(maze: list) -> tuple[int, int]:
+def find_start_position(maze: list):
     """
     Find the starting position
     :param maze: maze
@@ -50,7 +50,7 @@ def find_start_position(maze: list) -> tuple[int, int]:
                 return i, j
 
 
-def find_path(maze: list) -> (int, list):
+def find_path(maze: list[str]):
     """
     Based on the condition, in my solution I expect a correct maze in which the starting position is part of the ring.
     Additional checks can be added for reliability.
