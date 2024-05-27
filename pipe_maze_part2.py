@@ -1,3 +1,6 @@
+import time
+
+
 NORTH = (-1, 0)
 SOUTH = (1, 0)
 EAST = (0, -1)
@@ -23,6 +26,16 @@ DIRECTION = {
 
 
 class Maze:
+    @staticmethod
+    def check_time(func):
+        def wrapper(self, *args, **kwargs):
+            time_start = time.perf_counter()
+            a = func(self, *args, **kwargs)
+            time_end = time.perf_counter()
+            total_time = time_end - time_start
+            print(f'{total_time:0.5f} seconds have passed in {func.__name__}')
+            return a
+        return wrapper
 
     def __init__(self, maze: list[str]):
         self.maze: list[str] = maze
@@ -30,6 +43,7 @@ class Maze:
         self.start_directions: list[tuple[tuple, tuple, int]] = []  # (coordinates, exit direction, distances)
         self.track_maze: list[str] = []
         self.visited: list = []
+        self.middle_row: int = len(self.maze) // 2
 
     def print_maze(self, maze=None) -> None:
         """
@@ -40,10 +54,11 @@ class Maze:
         if maze is None:
             maze = self.maze
         for i in range(len(maze)):
+            print(str(i).zfill(3), end=" ")
             for j in range(len(maze[0])):
                 print(maze[i][j], end="")
             print()
-
+    @check_time
     def find_start_position(self):
         """
         Find the starting position
@@ -53,6 +68,7 @@ class Maze:
                 if cell == "S":
                     self.start_position = (i, j)
 
+    @check_time
     def find_start_directions(self):
         """
         Look at the neighboring cells and if there is an entrance to the pipe on the side where the Start is,
@@ -67,6 +83,7 @@ class Maze:
             ):
                 self.start_directions.append(((ni, nj), (di, dj), 1))
 
+    @check_time
     def create_track_maze(self):
         """
         Create a clean maze and compute a symbol to replace the starting position
@@ -81,6 +98,7 @@ class Maze:
                 if second_start_direction == DIRECTION[direction][first_start_direction]:
                     self.track_maze[self.start_position[0]][self.start_position[1]] = direction
 
+    @check_time
     def create_loop(self) -> int:
         """
         Then go around both ends of the pipe until they meet.
@@ -105,6 +123,8 @@ class Maze:
                 return distance + 1
             self.visited.append((ni, nj))
 
+
+    @check_time
     def calculate_enclosed_area(self) -> int:
         """
         Go through every cell in the track_maze that contains only big loop.
@@ -136,6 +156,72 @@ class Maze:
                     if crossing_counter % 2 == 1:
                         count_tiles += 1
         return count_tiles
+
+    def check_title(self, row: str, j: int) -> bool:
+        """
+        Check if a cell is inside the big loop.
+        :param row: row of the maze
+        :param j: nomber of the cell
+        :return: True if the cell is inside the big loop.
+        """
+        crossing_counter = 0
+        previous_turn = None
+        if j <= self.middle_row:
+            my_str = [x for x in row[:j] if x not in (".", "-")]
+        else:
+            my_str = [x for x in row[j:] if x not in (".", "-")]
+
+        for x in my_str:
+            match x:
+                case "|":
+                    crossing_counter += 1
+                case "F" | "L":
+                    previous_turn = x
+                case "J":
+                    if previous_turn == "F":
+                        crossing_counter += 1
+                case "7":
+                    if previous_turn == "L":
+                        crossing_counter += 1
+
+        if crossing_counter % 2 == 1:
+            return True
+
+    @check_time
+    def calculate_enclosed_area_optimized(self) -> int:
+        """
+        :return: number of the area within the loop.
+        """
+        checked: set = set(self.visited)
+        count_tiles: int = 0
+
+        for i, row in enumerate(self.track_maze):
+            for j in range(len(row)):
+                if (i, j) not in checked:
+                    stack = []
+                    visited = set()
+                    stack.append((i, j))
+                    while stack:
+                        current = stack.pop(0)
+                        visited.add(current)
+                        for di, dj in (WEST, EAST, SOUTH, NORTH):
+                            ni = current[0] + di
+                            nj = current[1] + dj
+                            if (
+                                    0 <= ni < len(self.maze)
+                                    and 0 <= nj < len(self.maze[0])
+                                    and self.track_maze[ni][nj] == "."
+                                    and (ni, nj) not in visited
+                                    and (ni, nj) not in stack
+                            ):
+                                stack.append((ni, nj))
+
+                    if self.check_title(row, j):
+                        count_tiles += len(visited)
+
+                    checked.update(visited)
+        return count_tiles
+
 
 
 maze_big = """F--F7F7|7FJ..JF-7F|77FL-L7.L.L7LFFJ-77|7.L777LF7L|FJJ-7-F|J7-7FF-7..FFF7JF--L77FL--77-7-77-|7FJ.LL.|7L7-|-FJJ.-J.F-77|F---|7.F--|--.F-7-7.F7
@@ -281,13 +367,26 @@ FL..F-.J.7J-LJJ|LL-J-LL7JLJLJ..|.F7L7-F|J-LJJJ-L.LLJJ.FJL|...-.FJL-LJJLF7.J.F-J.
 my_maze = Maze(maze_big.split("\n"))
 my_maze.find_start_position()  # determination coordinate S
 my_maze.find_start_directions()  # determination direction of neighboring pipes from S position
+
 my_maze.create_track_maze()  # determination of pipe type in position S create maze with this symbol
+
 number_of_steps = my_maze.create_loop()  # create maze with big loop and count steps
-my_maze.print_maze(my_maze.track_maze)
-cels_within_loop = my_maze.calculate_enclosed_area()
 print("Number of steps: ", number_of_steps)
+# my_maze.print_maze(my_maze.track_maze)
+
+
+cels_within_loop = my_maze.calculate_enclosed_area()
+# my_maze.print_maze(my_maze.inloop_maze1)
+
 print("Number of cels within the loop: ", cels_within_loop)
 
+
+cels_within_loop_optimized = my_maze.calculate_enclosed_area_optimized()
+# my_maze.print_maze(my_maze.inloop_maze2)
+
+print("Number of cels within the loop(optimized): ", cels_within_loop_optimized)
+
+# my_maze.compare()
 maze10 = """FF7FSF7F7F7F7F7F---7
 L|LJ||||||||||||F--J
 FL-7LJLJ||||||LJL-77
